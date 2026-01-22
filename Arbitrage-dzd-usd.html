@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arbitrage DZD-Wise</title>
+    
+    <!-- Chargement de React et Babel (Nécessaire pour la logique) -->
+    <script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- STYLE CSS INTÉGRÉ (Indépendant d'Internet) -->
+    <style>
+      /* Reset de base */
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { 
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background-color: #f3f4f6; 
+        color: #1f2937;
+        padding: 20px;
+      }
+
+      /* Conteneur Principal */
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+      }
+
+      /* Titres */
+      h1 {
+        text-align: center;
+        font-size: 1.875rem;
+        font-weight: 700;
+        color: #111827;
+        margin-bottom: 1.5rem;
+      }
+      h2 {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 1rem;
+      }
+      h3 {
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin-bottom: 0.25rem;
+      }
+
+      /* Cartes (Fonds blancs) */
+      .card {
+        background-color: white;
+        padding: 1.5rem;
+        border-radius: 0.75rem;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        margin-bottom: 1.5rem;
+      }
+
+      /* Grilles */
+      .grid-3 { display: grid; grid-template-columns: 1fr; gap: 1rem; }
+      .grid-2 { display: grid; grid-template-columns: 1fr; gap: 1rem; }
+      
+      @media (min-width: 640px) {
+        .grid-3 { grid-template-columns: repeat(3, 1fr); }
+        .grid-2 { grid-template-columns: repeat(2, 1fr); }
+      }
+
+      /* Champs de saisie (Inputs) */
+      .input-group { margin-bottom: 0.5rem; }
+      .label {
+        display: block;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #6b7280;
+        margin-bottom: 0.25rem;
+      }
+      .input-wrapper { position: relative; }
+      .input-field {
+        width: 100%;
+        padding: 0.75rem;
+        padding-right: 3rem; /* Espace pour l'unité */
+        border: 1px solid #d1d5db;
+        border-radius: 0.5rem;
+        font-size: 1rem;
+        outline: none;
+        transition: border-color 0.2s;
+      }
+      .input-field:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      }
+      .input-field.error { border-color: #ef4444; }
+      .unit {
+        position: absolute;
+        right: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #9ca3af;
+        font-weight: 500;
+        pointer-events: none;
+      }
+      .help-text { font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem; }
+      .error-text { font-size: 0.75rem; color: #dc2626; margin-top: 0.25rem; font-weight: 500; }
+
+      /* Boutons */
+      .btn-group { display: flex; gap: 0.75rem; flex-direction: column; }
+      @media (min-width: 640px) { .btn-group { flex-direction: row; } }
+
+      .btn {
+        padding: 1rem 1.5rem;
+        border-radius: 0.5rem;
+        font-weight: 700;
+        font-size: 1rem;
+        cursor: pointer;
+        border: none;
+        transition: background-color 0.2s;
+        text-align: center;
+      }
+      .btn-primary {
+        background-color: #2563eb;
+        color: white;
+        width: 100%;
+        flex-grow: 1;
+      }
+      .btn-primary:hover { background-color: #1d4ed8; }
+      
+      .btn-secondary {
+        background-color: white;
+        color: #374151;
+        border: 1px solid #d1d5db;
+        width: 100%;
+      }
+      .btn-secondary:hover { background-color: #f9fafb; }
+      .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+      /* Résultats */
+      .result-card {
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        color: white;
+        margin-bottom: 1rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      }
+      .bg-green { background-color: #059669; }
+      .bg-blue { background-color: #2563eb; }
+      
+      .result-detail {
+        background-color: white;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        border: 1px solid #e5e7eb;
+      }
+      .detail-label { font-size: 0.875rem; font-weight: 600; }
+      .detail-label.blue { color: #2563eb; }
+      .detail-label.green { color: #059669; }
+      .detail-value { font-size: 1.5rem; font-weight: 700; color: #1f2937; margin-top: 0.25rem; }
+      .detail-sub { font-size: 0.875rem; color: #6b7280; margin-top: 0.25rem; }
+
+      .footer {
+        text-align: center;
+        font-size: 0.875rem;
+        color: #9ca3af;
+        margin-top: 2.5rem;
+        margin-bottom: 1rem;
+      }
+
+      /* Cacher les flèches des nombres */
+      input[type="number"]::-webkit-outer-spin-button,
+      input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+      input[type="number"] { -moz-appearance: textfield; }
+    </style>
+</head>
+<body>
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+      
+      const { useState, useEffect, useMemo, Fragment } = React;
+
+      // --- Helpers ---
+      const parseNumber = (v) => {
+        if (v === null || v === undefined) return NaN;
+        const s = String(v).trim();
+        if (s === '') return NaN;
+        return Number((s.replace(/\s+/g, '').replace(',', '.')));
+      };
+
+      // --- Calcul d'arbitrage pur ---
+      function computeArbitrage({ pUsdDzd, pEurDzd, eurOfferAmount, sellerFixedFee = 0, wiseConvertAmount, wiseReceivedUsd }) {
+        const p_usd_dzd = parseNumber(pUsdDzd);
+        const p_eur_dzd = parseNumber(pEurDzd);
+        const eur_offer = parseNumber(eurOfferAmount);
+        const fee = parseNumber(sellerFixedFee) || 0;
+        const wise_convert = parseNumber(wiseConvertAmount);
+        const wise_received = parseNumber(wiseReceivedUsd);
+
+        const errors = {};
+        if (!Number.isFinite(p_usd_dzd) || p_usd_dzd <= 0) errors.pUsdDzd = 'Requis';
+        if (!Number.isFinite(p_eur_dzd) || p_eur_dzd <= 0) errors.pEurDzd = 'Requis';
+        if (!Number.isFinite(eur_offer) || eur_offer <= 0) errors.eurOfferAmount = 'Requis';
+        if (!Number.isFinite(wise_convert) || wise_convert <= 0) errors.wiseConvertAmount = 'Requis';
+        if (!Number.isFinite(wise_received) || wise_received <= 0) errors.wiseReceivedUsd = 'Requis';
+        if (!Number.isFinite(fee) || fee < 0) errors.sellerFixedFee = 'Invalide';
+
+        if (Object.keys(errors).length > 0) {
+          return { error: 'Veuillez corriger les champs invalides.', fieldErrors: errors, data: null };
+        }
+
+        const r_net_base = wise_received / wise_convert;
+        const total_eur_to_buy = eur_offer + fee;
+        const total_cost_indirect_dzd = total_eur_to_buy * p_eur_dzd;
+        const total_usd_received = eur_offer * r_net_base;
+        const cost_per_usd_indirect = total_cost_indirect_dzd / total_usd_received;
+        const cost_per_usd_direct = p_usd_dzd;
+        const diff_total_dzd = (cost_per_usd_direct - cost_per_usd_indirect) * total_usd_received;
+        const break_even_rate = (cost_per_usd_direct * eur_offer * r_net_base) / (eur_offer + fee);
+        const betterPath = cost_per_usd_direct < cost_per_usd_indirect ? 'direct' : 'indirect';
+
+        return {
+          data: {
+            cost_per_usd_direct,
+            cost_per_usd_indirect,
+            total_cost_indirect_dzd,
+            total_cost_direct_dzd: cost_per_usd_direct * total_usd_received,
+            total_usd_received,
+            diff_total_dzd,
+            break_even_rate,
+            r_net_base,
+            betterPath
+          },
+          error: null,
+          fieldErrors: {}
+        };
+      }
+
+      // --- Constantes ---
+      const LS_KEY = 'arbitrage_dzd_wise_settings_v28';
+
+      // --- InputField ---
+      function InputField({ label, value, onChange, unit, placeholder, helpText = "", error }) {
+        return (
+          <div className="input-group">
+            <label className="label">{label}</label>
+            <div className="input-wrapper">
+              <input
+                type="text"
+                inputMode="decimal"
+                value={value}
+                onChange={e => onChange(e.target.value)}
+                placeholder={placeholder}
+                className={`input-field ${error ? 'error' : ''}`}
+              />
+              <span className="unit">{unit}</span>
+            </div>
+            {error && <p className="error-text">{error}</p>}
+            {!error && helpText && <p className="help-text">{helpText}</p>}
+          </div>
+        );
+      }
+
+      // --- Composant Principal ---
+      function App() {
+        const [pUsdDzd, setPUsdDzd] = useState('');
+        const [pEurDzd, setPEurDzd] = useState('');
+        const [eurOfferAmount, setEurOfferAmount] = useState('100');
+        const [sellerFixedFee, setSellerFixedFee] = useState('0');
+        const [wiseConvertAmount, setWiseConvertAmount] = useState('100');
+        const [wiseReceivedUsd, setWiseReceivedUsd] = useState('115.34');
+
+        const [fieldErrors, setFieldErrors] = useState({});
+        const [result, setResult] = useState(null);
+
+        // --- Debounced inputs ---
+        const [debouncedInputs, setDebouncedInputs] = useState({ pUsdDzd, pEurDzd, eurOfferAmount, sellerFixedFee, wiseConvertAmount, wiseReceivedUsd });
+        useEffect(() => {
+          const timer = setTimeout(() => {
+            setDebouncedInputs({ pUsdDzd, pEurDzd, eurOfferAmount, sellerFixedFee, wiseConvertAmount, wiseReceivedUsd });
+          }, 300);
+          return () => clearTimeout(timer);
+        }, [pUsdDzd, pEurDzd, eurOfferAmount, sellerFixedFee, wiseConvertAmount, wiseReceivedUsd]);
+
+        // --- Calcul ---
+        const calculation = useMemo(() => {
+          return computeArbitrage({ ...debouncedInputs });
+        }, [debouncedInputs]);
+
+        // --- Mise à jour des erreurs ---
+        useEffect(() => {
+          if (calculation.fieldErrors) setFieldErrors(calculation.fieldErrors);
+          else setFieldErrors({});
+        }, [calculation]);
+
+        // --- localStorage ---
+        useEffect(() => {
+          try {
+            const raw = localStorage.getItem(LS_KEY);
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              if (parsed.wiseConvertAmount) setWiseConvertAmount(parsed.wiseConvertAmount);
+              if (parsed.wiseReceivedUsd) setWiseReceivedUsd(parsed.wiseReceivedUsd);
+              if (parsed.sellerFixedFee) setSellerFixedFee(parsed.sellerFixedFee);
+            }
+          } catch {}
+        }, []);
+
+        useEffect(() => {
+          const timer = setTimeout(() => {
+            try {
+              localStorage.setItem(LS_KEY, JSON.stringify({ wiseConvertAmount, wiseReceivedUsd, sellerFixedFee }));
+            } catch {}
+          }, 500);
+          return () => clearTimeout(timer);
+        }, [wiseConvertAmount, wiseReceivedUsd, sellerFixedFee]);
+
+        // --- Actions ---
+        const handleCalculate = () => {
+          if (calculation.error) {
+            setFieldErrors(calculation.fieldErrors || {});
+            setResult(null);
+            return;
+          }
+          setResult(calculation.data);
+        };
+
+        const fallbackCopy = (text) => {
+          try {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-9999px';
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            alert('Résultats copiés.');
+          } catch {
+            alert('Échec de la copie.');
+          }
+        };
+
+        const copyResult = () => {
+          if (!result) return;
+          const diff = result.diff_total_dzd;
+          const gainText = diff >= 0 ? `+${diff.toFixed(0)} DZD` : `${diff.toFixed(0)} DZD`;
+          const txt = `Arbitrage DZD-Wise:
+Chemin A (Direct USD): ${result.cost_per_usd_direct.toFixed(2)} DZD / USD
+Chemin B (via EUR): ${result.cost_per_usd_indirect.toFixed(2)} DZD / USD
+Recommandation: ${result.betterPath === 'direct' ? 'USD Direct' : 'EUR→USD'}
+Économie/Perte: ${gainText}
+---
+Taux Net Wise: ${result.r_net_base.toFixed(5)} USD/EUR
+Point d'équilibre: ${result.break_even_rate.toFixed(2)} DZD
+Offre: ${eurOfferAmount} EUR`;
+
+          if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(txt).then(() => alert('Résultats copiés.')).catch(() => fallbackCopy(txt));
+          } else {
+            fallbackCopy(txt);
+          }
+        };
+
+        return (
+          <div className="container">
+            <h1>Arbitrage DZD-Wise</h1>
+
+            <div className="card">
+              <h2>Étape 1 : Offre du Marché</h2>
+              <div className="grid-3">
+                <InputField label="Prix 1 USD (DZD)" value={pUsdDzd} onChange={setPUsdDzd} unit="DZD" placeholder="245" helpText="Prix d'achat direct." error={fieldErrors.pUsdDzd} />
+                <InputField label="Prix 1 EUR (DZD)" value={pEurDzd} onChange={setPEurDzd} unit="DZD" placeholder="282" helpText="Prix d'achat du vendeur." error={fieldErrors.pEurDzd} />
+                <InputField label="Montant Offre Vendeur" value={eurOfferAmount} onChange={setEurOfferAmount} unit="EUR" placeholder="100" helpText="Le montant total proposé." error={fieldErrors.eurOfferAmount} />
+              </div>
+            </div>
+
+            <div className="card">
+              <h2>Étape 2 : Réglages (Mémorisés)</h2>
+              <div className="grid-2">
+                <InputField label="Wise: Vous convertissez" value={wiseConvertAmount} onChange={setWiseConvertAmount} unit="EUR" placeholder="100" helpText="Simulez sur Wise." error={fieldErrors.wiseConvertAmount} />
+                <InputField label="Wise: Vous recevez" value={wiseReceivedUsd} onChange={setWiseReceivedUsd} unit="USD" placeholder="115.34" helpText="Montant USD reçu." error={fieldErrors.wiseReceivedUsd} />
+              </div>
+              <div style={{marginTop: '1rem', borderTop: '1px solid #e5e7eb', paddingTop: '1rem'}}>
+                <InputField label="Frais Vendeur Fixe" value={sellerFixedFee} onChange={setSellerFixedFee} unit="EUR" placeholder="0" helpText="Frais fixes du vendeur." error={fieldErrors.sellerFixedFee} />
+              </div>
+            </div>
+
+            <div className="btn-group">
+              <button onClick={handleCalculate} className="btn btn-primary">Calculer</button>
+              <button onClick={copyResult} disabled={!result} className="btn btn-secondary" title="Copier">
+                Copier le résultat
+              </button>
+            </div>
+
+            {result && !calculation.error && (
+              <div style={{marginTop: '2rem'}}>
+                <div className={`result-card ${result.betterPath === 'direct' ? 'bg-blue' : 'bg-green'}`}>
+                  <h3>{result.betterPath === 'direct' ? "Acheter USD Directement" : "Acheter EUR et Convertir"}</h3>
+                  <p>{result.diff_total_dzd > 0 ? 'Économie estimée' : 'Perte estimée'}: <strong>{Math.abs(result.diff_total_dzd).toFixed(0)} DZD</strong></p>
+                </div>
+
+                <div className="grid-2">
+                  <div className="result-detail">
+                    <span className="detail-label blue">Chemin A: Achat Direct USD</span>
+                    <p className="detail-value">{result.cost_per_usd_direct.toFixed(2)} DZD</p>
+                    <p className="detail-sub">Coût par 1 USD</p>
+                  </div>
+                  <div className="result-detail">
+                    <span className="detail-label green">Chemin B: Achat via EUR</span>
+                    <p className="detail-value">{result.cost_per_usd_indirect.toFixed(2)} DZD</p>
+                    <p className="detail-sub">Coût par 1 USD</p>
+                  </div>
+                </div>
+
+                <div className="card" style={{marginTop: '1.5rem'}}>
+                  <span className="detail-label">Point d'équilibre (Break-Even)</span>
+                  <p className="detail-value" style={{fontSize: '1.25rem', color: '#2563eb'}}>
+                     {result.break_even_rate.toFixed(2)} DZD
+                  </p>
+                  <p className="detail-sub">La voie EUR devient rentable si le prix de 1 EUR est inférieur à ce montant.</p>
+                </div>
+              </div>
+            )}
+
+            <div className="footer">
+              Développé par Kib Ali (V28 - Style Intégré)
+            </div>
+          </div>
+        );
+      }
+
+      ReactDOM.render(<React.StrictMode><App /></React.StrictMode>, document.getElementById('root'));
+    </script>
+
+</body>
+</html>
+
