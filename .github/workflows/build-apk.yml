@@ -17,7 +17,6 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 20
-          # cache: 'npm'  <-- LIGNE SUPPRIMÉE POUR CORRIGER L'ERREUR
 
       - name: 🏗 Setup Java
         uses: actions/setup-java@v3
@@ -26,11 +25,18 @@ jobs:
           java-version: '17'
 
       - name: 📦 Install Dependencies
-        # On installe et on génère un nouveau lockfile silencieusement
+        # On installe proprement
         run: npm install
 
       - name: ⚙️ Expo Prebuild
         run: npx expo prebuild --platform android
+
+      # --- LE FIX EST ICI ---
+      # On force Kotlin 1.9.25 dans le fichier de configuration Android
+      - name: 🔧 Fix Kotlin Version
+        working-directory: android
+        run: echo "kotlinVersion=1.9.25" >> gradle.properties
+      # ----------------------
 
       - name: 🔨 Build APK
         working-directory: android
