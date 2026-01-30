@@ -25,27 +25,31 @@ jobs:
           java-version: '17'
 
       - name: 📦 Install Dependencies
-        # On installe sans cache pour garantir la fraîcheur
         run: npm install
 
       - name: ⚙️ Expo Prebuild
         run: npx expo prebuild --platform android
 
-      # --- CORRECTION FINALE ---
-      # On force la version 1.9.25 (Requise par Compose 1.5.15)
-      # On définit les deux noms de variables possibles pour être certain.
-      - name: 🔧 Fix Kotlin Version
+      - name: 🔧 Fix Kotlin Version (Nuclear Option)
         working-directory: android
         run: |
+          # 1. Remplacement chirurgical dans le fichier build.gradle principal
+          # On cherche la définition par défaut et on l'écrase
+          sed -i 's/kotlinVersion = "1.9.24"/kotlinVersion = "1.9.25"/g' build.gradle
+          
+          # 2. Injection dans gradle.properties (Ceinture et bretelles)
           echo "android.kotlinVersion=1.9.25" >> gradle.properties
           echo "kotlinVersion=1.9.25" >> gradle.properties
-      # -------------------------
+          
+          # Vérification (Affiche le résultat pour le debug)
+          grep "kotlinVersion" build.gradle || echo "Kotlin version not found in build.gradle"
 
       - name: 🔨 Build APK
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug
+          # 3. Priorité Absolue : On force la version via les arguments de commande
+          ./gradlew assembleDebug -PkotlinVersion=1.9.25 -Pandroid.kotlinVersion=1.9.25 --stacktrace
 
       - name: 📤 Upload APK
         uses: actions/upload-artifact@v4
