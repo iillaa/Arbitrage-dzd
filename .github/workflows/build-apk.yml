@@ -25,19 +25,12 @@ jobs:
           java-version: '17'
 
       - name: 📦 Install Dependencies
-        run: npm install
+        # Le flag --legacy-peer-deps assure que le nouveau plugin s'installe sans conflit
+        run: npm install --legacy-peer-deps
 
       - name: ⚙️ Expo Prebuild
-        run: npx expo prebuild --platform android
-
-      - name: 🔧 Simple Kotlin Version Fix
-        working-directory: android
-        run: |
-          # Update build.gradle with correct Kotlin version
-          sed -i "s/1.9.24/1.9.25/g" build.gradle 2>/dev/null || true
-          sed -i "s/1.9.24/1.9.25/g" app/build.gradle 2>/dev/null || true
-          echo "android.kotlinVersion=1.9.25" >> gradle.properties
-          echo "kotlinVersion=1.9.25" >> gradle.properties
+        # Le flag --clean force la regénération totale avec la bonne version de Kotlin
+        run: npx expo prebuild --platform android --clean
 
       - name: 🔨 Build APK
         working-directory: android
