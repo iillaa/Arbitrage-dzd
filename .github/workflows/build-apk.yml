@@ -25,18 +25,21 @@ jobs:
           java-version: '17'
 
       - name: 📦 Install Dependencies
-        # On installe proprement
+        # On installe sans cache pour garantir la fraîcheur
         run: npm install
 
       - name: ⚙️ Expo Prebuild
         run: npx expo prebuild --platform android
 
-      # --- LE FIX EST ICI ---
-      # On force Kotlin 1.9.25 dans le fichier de configuration Android
+      # --- CORRECTION FINALE ---
+      # On force la version 1.9.25 (Requise par Compose 1.5.15)
+      # On définit les deux noms de variables possibles pour être certain.
       - name: 🔧 Fix Kotlin Version
         working-directory: android
-        run: echo "kotlinVersion=1.9.25" >> gradle.properties
-      # ----------------------
+        run: |
+          echo "android.kotlinVersion=1.9.25" >> gradle.properties
+          echo "kotlinVersion=1.9.25" >> gradle.properties
+      # -------------------------
 
       - name: 🔨 Build APK
         working-directory: android
