@@ -36,32 +36,24 @@ jobs:
         run: |
           chmod +x gradlew
           sed -i 's/distributionUrl=.*zip/distributionUrl=https\:\/\/services.gradle.org\/distributions\/gradle-8.0-all.zip/' gradle/wrapper/gradle-wrapper.properties
-          
-          # Configure gradle.properties
-          cat >> gradle.properties << EOF
-android.useAndroidX=true
-android.enableJetifier=true
-org.gradle.jvmargs=-Xmx4096m
-org.gradle.daemon=false
-EOF
+          echo "android.useAndroidX=true" >> gradle.properties
+          echo "android.enableJetifier=true" >> gradle.properties
+          echo "org.gradle.jvmargs=-Xmx4096m" >> gradle.properties
+          echo "org.gradle.daemon=false" >> gradle.properties
 
       - name: 🔧 Enable JS Bundling in APK
         working-directory: android/app
         run: |
-          # This is the KEY step - enable bundleInDebug
-          cat >> build.gradle << 'EOF'
-
-project.ext.react = [
-    bundleInDebug: true,
-    bundleInRelease: true,
-    devDisabledInDebug: false
-]
-EOF
+          echo "" >> build.gradle
+          echo "project.ext.react = [" >> build.gradle
+          echo "    bundleInDebug: true," >> build.gradle
+          echo "    bundleInRelease: true," >> build.gradle
+          echo "    devDisabledInDebug: false" >> build.gradle
+          echo "]" >> build.gradle
 
       - name: 🔨 Build APK with Bundled JS
         working-directory: android
-        run: |
-          ./gradlew assembleDebug --stacktrace
+        run: ./gradlew assembleDebug --stacktrace
 
       - name: 📤 Upload APK
         uses: actions/upload-artifact@v4
