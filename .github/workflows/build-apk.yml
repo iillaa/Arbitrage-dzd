@@ -30,45 +30,60 @@ jobs:
       - name: ⚙️ Expo Prebuild
         run: npx expo prebuild --platform android
 
-      - name: 🔧 Fix Kotlin Version
+      - name: 🔧 Fix Kotlin Version - Deep Debug
         working-directory: android
         run: |
-          # Check current Kotlin version in build.gradle
-          echo "=== Root build.gradle ==="
-          cat build.gradle 2>/dev/null | grep -i kotlin || echo "No kotlin found"
+          echo "=== DEBUG: All Kotlin versions in project ==="
           
-          echo "=== App build.gradle ==="
-          cat app/build.gradle 2>/dev/null | grep -i kotlin || echo "No kotlin found"
+          # Find all occurrences of kotlinVersion
+          echo "--- All kotlinVersion references ---"
+          grep -r "kotlinVersion" . --include="*.gradle*" --include="*.properties" 2>/dev/null | head -20
           
-          # Update Kotlin version in root build.gradle (buildscript block)
-          if [ -f "build.gradle" ]; then
-            sed -i 's/ext(\s*\["\'']kotlinVersion["\'']\s*=\s*["\''][0-9.]*["\'']\s*)/ext(["kotlinVersion" = "1.9.25"])/g' build.gradle
-            sed -i 's/ext\s*(\s*["\'']kotlinVersion["\'']\s*=\s*["\''][0-9.]*["\'']\s*)/ext("kotlinVersion" = "1.9.25")/g' build.gradle
-          fi
+          echo ""
+          echo "--- All 1.9.24 references ---"
+          grep -r "1.9.24" . --include="*.gradle*" --include="*.properties" 2>/dev/null | head -20
           
-          # Update Kotlin version in app/build.gradle
-          if [ -f "app/build.gradle" ]; then
-            sed -i 's/ext\s*(\s*["\'']kotlinVersion["\'']\s*=\s*["\''][0-9.]*["\'']\s*)/ext("kotlinVersion" = "1.9.25")/g' app/build.gradle
-          fi
+          echo ""
+          echo "--- Checking expo-modules-core build.gradle ---"
+          find . -path "*/expo-modules-core/*" -name "build.gradle*" -exec cat {} \; 2>/dev/null | grep -i kotlin || echo "Not found"
           
-          # Also update in gradle.properties
+          echo ""
+          echo "--- Root build.gradle kotlin section ---"
+          cat build.gradle | grep -A10 -B2 "kotlinVersion" || echo "Not found"
+          
+          # Force replace ALL 1.9.24 with 1.9.25 in ALL gradle files
+          echo ""
+          echo "=== FORCING KOTLIN VERSION UPDATE ==="
+          find . -type f \( -name "*.gradle" -o -name "*.gradle.kts" -o -name "*.properties" \) -exec sed -i 's/1\.9\.24/1.9.25/g' {} \; 2>/dev/null || true
+          
+          # Also replace any hardcoded kotlin version patterns
+          find . -type f \( -name "*.gradle" -o -name "*.gradle.kts" \) -exec sed -i 's/版本.*1\.9\.24/版本 1.9.25/g' {} \; 2>/dev/null || true
+          
+          echo ""
+          echo "=== After update ==="
+          grep -r "1.9.24\|1.9.25" . --include="*.gradle*" --include="*.properties" 2>/dev/null | head -10
+          
+          # Ensure gradle.properties has the override
           echo "" >> gradle.properties
-          echo "# Kotlin version fix" >> gradle.properties
-          echo "android.kotlinVersion=1.9.25" >> gradle.properties
-          echo "kotlinVersion=1.9.25" >> gradle.properties
-          echo "suppressKotlinVersionCompatibilityCheck=true" >> gradle.properties
-          
-          # Verify changes
-          echo "=== Updated gradle.properties ==="
-          cat gradle.properties
+          echo "# Force Kotlin version" >> gradle.properties
+          echo "kotlin.version=1.9.25" >> gradle.properties
+          echo "org.jetbrains.kotlin.gradle.plugin.kotlinVersion=1.9.25" >> gradle.properties
 
       - name: 🔨 Build APK
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleDebug --no-daemon 2>&1 | tee build.log
+
+      - name: 📤 Upload Build Log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: android/build.log
 
       - name: 📤 Upload APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: arbitrage-app-debug
