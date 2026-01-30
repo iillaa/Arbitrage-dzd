@@ -7,9 +7,7 @@
     "userInterfaceStyle": "dark",
     "android": {
       "package": "com.kibali.arbitragedzd",
-      "adaptiveIcon": {
-        "backgroundColor": "#0f172a"
-      }
+      "backgroundColor": "#0f172a"
     },
     "plugins": [
       [

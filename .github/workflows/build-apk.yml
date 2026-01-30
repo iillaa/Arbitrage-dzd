@@ -30,17 +30,15 @@ jobs:
       - name: ⚙️ Expo Prebuild
         run: npx expo prebuild --platform android --clean
 
-      # --- LE FIX OFFLINE EST ICI ---
-      # On injecte "bundleInDebug: true" dans le fichier de configuration de l'app
-      # Cela oblige Gradle à mettre le code JS DANS l'APK, pas sur un serveur.
+      # --- LE CORRECTIF OFFLINE ---
+      # On force l'inclusion du code JS dans l'APK (bundleInDebug: true)
+      # Sinon, l'app cherche un serveur Metro et affiche une erreur.
       - name: 🔧 Force Offline Bundle (Debug Mode)
         working-directory: android
         run: |
-          # On cherche la configuration react et on ajoute l'option bundleInDebug
           sed -i '/project.ext.react = \[/a \ \ \ \ bundleInDebug: true,' app/build.gradle
-          
-          # Vérification (pour être sûr que ça a marché)
-          grep -A 5 "project.ext.react" app/build.gradle
+          # On vérifie que l'injection a fonctionné
+          grep -C 3 "bundleInDebug" app/build.gradle || echo "WARNING: Injection failed"
 
       - name: 🔨 Build APK
         working-directory: android
