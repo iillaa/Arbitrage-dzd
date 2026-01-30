@@ -31,52 +31,48 @@ jobs:
       - name: ⚙️ Expo Prebuild
         run: npx expo prebuild --platform android --clean
 
-      - name: 🔧 Fix settings.gradle for Gradle 8.0
+      - name: 🔧 Fix settings.gradle
         working-directory: android
         run: |
-          # Backup original
-          cp settings.gradle settings.gradle.bak
-          
-          # Remove the problematic plugin line
+          # Remove the problematic React Native plugin line
           sed -i '/id.*com.facebook.react.settings/d' settings.gradle
           
-          # Show what we changed
           echo "=== Modified settings.gradle ==="
-          cat settings.gradle
+          head -30 settings.gradle
 
       - name: 🔧 Configure Gradle
         working-directory: android
         run: |
           chmod +x gradlew
           
-          # Use Gradle 7.6 instead of 8.0 (better compatibility with React Native)
-          sed -i 's/distributionUrl=.*zip/distributionUrl=https\:\/\/services.gradle.org\/distributions\/gradle-7.6-all.zip/' gradle/wrapper/gradle-wrapper.properties
+          # Use Gradle 7.6.3 (required by Kotlin Gradle Plugin)
+          sed -i 's/distributionUrl=.*zip/distributionUrl=https\:\/\/services.gradle.org\/distributions\/gradle-7.6.3-all.zip/' gradle/wrapper/gradle-wrapper.properties
           
           # Configure gradle.properties
           echo "android.useAndroidX=true" >> gradle.properties
           echo "android.enableJetifier=true" >> gradle.properties
           echo "org.gradle.jvmargs=-Xmx4096m" >> gradle.properties
           echo "org.gradle.daemon=false" >> gradle.properties
+          
+          echo "=== Gradle wrapper properties ==="
+          cat gradle/wrapper/gradle-wrapper.properties
 
       - name: 🔧 Configure for Standalone Build
         working-directory: android/app
         run: |
-          # Find the react block in build.gradle and ensure bundleInDebug is set
+          # Enable bundling JavaScript into the APK
           if grep -q "react {" build.gradle; then
-            # React block exists, add bundleInDebug if not present
+            # React block exists, modify it
             if ! grep -q "bundleInDebug" build.gradle; then
               sed -i '/react {/a\    bundleInDebug = true' build.gradle
             fi
           else
-            # No react block, add one
+            # Add react configuration
             echo "" >> build.gradle
             echo "project.ext.react = [" >> build.gradle
             echo "    bundleInDebug: true" >> build.gradle
             echo "]" >> build.gradle
           fi
-          
-          echo "=== app/build.gradle configuration ==="
-          grep -A 5 "react" build.gradle || echo "React config added at end of file"
 
       - name: 🔨 Build APK
         working-directory: android
@@ -87,3 +83,13 @@ jobs:
         with:
           name: arbitrage-standalone
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+
+      - name: 📤 Upload Build Logs (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: android/app/build/outputs/logs/
+          retention-days: 7
+          if-no-files-found: ignore
