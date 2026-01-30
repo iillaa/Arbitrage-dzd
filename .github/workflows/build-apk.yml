@@ -28,8 +28,9 @@ jobs:
       - name: 📦 Install Dependencies
         run: npm install
 
+      # CORRECTION ICI : Suppression de --no-interactive
       - name: ⚙️ Expo Prebuild
-        run: npx expo prebuild --platform android --no-interactive
+        run: npx expo prebuild --platform android
 
       - name: 🔨 Build APK
         working-directory: android
