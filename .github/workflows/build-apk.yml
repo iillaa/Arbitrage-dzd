@@ -30,70 +30,20 @@ jobs:
       - name: ⚙️ Expo Prebuild
         run: npx expo prebuild --platform android
 
-      - name: 🔧 Fix Kotlin Version - Using Init Script
+      - name: 🔧 Simple Kotlin Version Fix
         working-directory: android
         run: |
-          # Create Gradle init script to force Kotlin version globally
-          mkdir -p ~/.gradle/init.d/
-          cat > ~/.gradle/init.d/force-kotlin-version.gradle << 'EOF'
-          allprojects {
-            buildscript {
-              ext {
-                set('kotlinVersion', '1.9.25')
-              }
-            }
-            afterEvaluate {
-              if (project.hasProperty('kotlinVersion')) {
-                project.ext.kotlinVersion = '1.9.25'
-              }
-            }
-          }
-          
-          // Also set the Kotlin version for Kotlin compiler plugin
-          settingsEvaluated { settings ->
-            settings.pluginManagement {
-              repositories {
-                gradlePluginPortal()
-              }
-            }
-          }
-          
-          projectsEvaluated { settings ->
-            allprojects {
-              it.subprojects.forEach { subproject ->
-                subproject.tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
-                  kotlinOptions {
-                    jvmTarget = '1.8'
-                  }
-                }
-              }
-            }
-          }
-          EOF
-          
-          # Also update the root build.gradle
-          if [ -f "build.gradle" ]; then
-            sed -i "s/findProperty('android.kotlinVersion') ?: '1.9.24'/findProperty('android.kotlinVersion') ?: '1.9.25'/g" build.gradle
-            sed -i "s/findProperty('android.kotlinVersion') ?: '1.9.25'/findProperty('android.kotlinVersion') ?: '1.9.25'/g" build.gradle
-          fi
-          
-          # Update gradle.properties
-          cat >> gradle.properties << 'EOF'
-          
-          # Force Kotlin version for all modules
-          android.kotlinVersion=1.9.25
-          kotlinVersion=1.9.25
-          suppressKotlinVersionCompatibilityCheck=true
-          
-          # Disable configuration cache for compatibility
-          org.gradle.configuration-cache=false
-          EOF
+          # Update build.gradle with correct Kotlin version
+          sed -i "s/1.9.24/1.9.25/g" build.gradle 2>/dev/null || true
+          sed -i "s/1.9.24/1.9.25/g" app/build.gradle 2>/dev/null || true
+          echo "android.kotlinVersion=1.9.25" >> gradle.properties
+          echo "kotlinVersion=1.9.25" >> gradle.properties
 
       - name: 🔨 Build APK
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --no-configuration-cache -PkotlinVersion=1.9.25
+          ./gradlew assembleDebug --no-daemon
 
       - name: 📤 Upload APK
         uses: actions/upload-artifact@v4
