@@ -16,7 +16,7 @@ jobs:
       - name: 🏗 Setup Node
         uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: 20 # On passe à Node 20 (plus rapide)
           cache: 'npm'
 
       - name: 🏗 Setup Java
@@ -26,19 +26,11 @@ jobs:
           java-version: '17'
 
       - name: 📦 Install Dependencies
-        run: npm install
+        # On force la régénération du lockfile pour éviter les conflits
+        run: rm -f package-lock.json && npm install
 
       - name: ⚙️ Expo Prebuild
         run: npx expo prebuild --platform android
-
-      # --- CORRECTION ROBUSTE ---
-      # On remplace TOTALE de la ligne distributionUrl pour forcer Gradle 8.2
-      # Peu importe si c'était 'bin' ou 'all' avant.
-      - name: 🔧 Fix Gradle Version
-        working-directory: android
-        run: |
-          sed -i 's/distributionUrl=.*zip/distributionUrl=https\:\/\/services.gradle.org\/distributions\/gradle-8.2-all.zip/' gradle/wrapper/gradle-wrapper.properties
-      # --------------------------
 
       - name: 🔨 Build APK
         working-directory: android
