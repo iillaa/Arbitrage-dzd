@@ -30,26 +30,21 @@ jobs:
       - name: ⚙️ Expo Prebuild
         run: npx expo prebuild --platform android
 
-      - name: 🔧 Fix Kotlin Version (Nuclear Option)
+      - name: 🔧 Deep Fix Kotlin Version
         working-directory: android
         run: |
-          # 1. Remplacement chirurgical dans le fichier build.gradle principal
-          # On cherche la définition par défaut et on l'écrase
-          sed -i 's/kotlinVersion = "1.9.24"/kotlinVersion = "1.9.25"/g' build.gradle
-          
-          # 2. Injection dans gradle.properties (Ceinture et bretelles)
+          # Remplace la version dans tous les fichiers gradle du dossier android
+          find . -type f -name "*.gradle*" -exec sed -i 's/1.9.24/1.9.25/g' {} +
+          # Force les propriétés globales
           echo "android.kotlinVersion=1.9.25" >> gradle.properties
           echo "kotlinVersion=1.9.25" >> gradle.properties
-          
-          # Vérification (Affiche le résultat pour le debug)
-          grep "kotlinVersion" build.gradle || echo "Kotlin version not found in build.gradle"
 
       - name: 🔨 Build APK
         working-directory: android
         run: |
           chmod +x gradlew
-          # 3. Priorité Absolue : On force la version via les arguments de commande
-          ./gradlew assembleDebug -PkotlinVersion=1.9.25 -Pandroid.kotlinVersion=1.9.25 --stacktrace
+          # On passe la version en paramètre direct pour écraser toute autre valeur
+          ./gradlew assembleDebug -Pandroid.kotlinVersion=1.9.25 -PkotlinVersion=1.9.25
 
       - name: 📤 Upload APK
         uses: actions/upload-artifact@v4
