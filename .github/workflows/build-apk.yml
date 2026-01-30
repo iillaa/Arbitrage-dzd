@@ -33,22 +33,40 @@ jobs:
       - name: 🔧 Fix Kotlin Version
         working-directory: android
         run: |
-          # Update Kotlin version in all build.gradle files
-          find . -type f \( -name "build.gradle" -o -name "build.gradle.kts" \) -exec sed -i 's/\(\"\|\'\''\)kotlin\(\"\|\'\''\)\s*:\s*\(\"\|\'\''\)[0-9.]*\(\"\|\'\''\)/\1kotlin\2: \3\1.9.25\4/g' {} \; 2>/dev/null || true
+          # Check current Kotlin version in build.gradle
+          echo "=== Root build.gradle ==="
+          cat build.gradle 2>/dev/null | grep -i kotlin || echo "No kotlin found"
           
-          # Also update ext.kotlinVersion in build.gradle files
-          find . -type f \( -name "build.gradle" -o -name "build.gradle.kts" \) -exec sed -i 's/ext(\(\"\|\'\''\)kotlinVersion\(\"\|\'\''\)\s*=\s*\(\"\|\'\''\)[0-9.]*\(\"\|\'\''\)/ext(\1kotlinVersion\2 = \3\1.9.25\4/g' {} \; 2>/dev/null || true
+          echo "=== App build.gradle ==="
+          cat app/build.gradle 2>/dev/null | grep -i kotlin || echo "No kotlin found"
           
-          # Set Kotlin version in gradle.properties
+          # Update Kotlin version in root build.gradle (buildscript block)
+          if [ -f "build.gradle" ]; then
+            sed -i 's/ext(\s*\["\'']kotlinVersion["\'']\s*=\s*["\''][0-9.]*["\'']\s*)/ext(["kotlinVersion" = "1.9.25"])/g' build.gradle
+            sed -i 's/ext\s*(\s*["\'']kotlinVersion["\'']\s*=\s*["\''][0-9.]*["\'']\s*)/ext("kotlinVersion" = "1.9.25")/g' build.gradle
+          fi
+          
+          # Update Kotlin version in app/build.gradle
+          if [ -f "app/build.gradle" ]; then
+            sed -i 's/ext\s*(\s*["\'']kotlinVersion["\'']\s*=\s*["\''][0-9.]*["\'']\s*)/ext("kotlinVersion" = "1.9.25")/g' app/build.gradle
+          fi
+          
+          # Also update in gradle.properties
+          echo "" >> gradle.properties
+          echo "# Kotlin version fix" >> gradle.properties
           echo "android.kotlinVersion=1.9.25" >> gradle.properties
           echo "kotlinVersion=1.9.25" >> gradle.properties
           echo "suppressKotlinVersionCompatibilityCheck=true" >> gradle.properties
+          
+          # Verify changes
+          echo "=== Updated gradle.properties ==="
+          cat gradle.properties
 
       - name: 🔨 Build APK
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug -Pandroid.kotlinVersion=1.9.25 -PkotlinVersion=1.9.25
+          ./gradlew assembleDebug --no-daemon
 
       - name: 📤 Upload APK
         uses: actions/upload-artifact@v4
