@@ -31,27 +31,54 @@ jobs:
       - name: ⚙️ Expo Prebuild
         run: npx expo prebuild --platform android --clean
 
+      - name: 🔧 Fix settings.gradle for Gradle 8.0
+        working-directory: android
+        run: |
+          # Backup original
+          cp settings.gradle settings.gradle.bak
+          
+          # Remove the problematic plugin line
+          sed -i '/id.*com.facebook.react.settings/d' settings.gradle
+          
+          # Show what we changed
+          echo "=== Modified settings.gradle ==="
+          cat settings.gradle
+
       - name: 🔧 Configure Gradle
         working-directory: android
         run: |
           chmod +x gradlew
-          sed -i 's/distributionUrl=.*zip/distributionUrl=https\:\/\/services.gradle.org\/distributions\/gradle-8.0-all.zip/' gradle/wrapper/gradle-wrapper.properties
+          
+          # Use Gradle 7.6 instead of 8.0 (better compatibility with React Native)
+          sed -i 's/distributionUrl=.*zip/distributionUrl=https\:\/\/services.gradle.org\/distributions\/gradle-7.6-all.zip/' gradle/wrapper/gradle-wrapper.properties
+          
+          # Configure gradle.properties
           echo "android.useAndroidX=true" >> gradle.properties
           echo "android.enableJetifier=true" >> gradle.properties
           echo "org.gradle.jvmargs=-Xmx4096m" >> gradle.properties
           echo "org.gradle.daemon=false" >> gradle.properties
 
-      - name: 🔧 Enable JS Bundling in APK
+      - name: 🔧 Configure for Standalone Build
         working-directory: android/app
         run: |
-          echo "" >> build.gradle
-          echo "project.ext.react = [" >> build.gradle
-          echo "    bundleInDebug: true," >> build.gradle
-          echo "    bundleInRelease: true," >> build.gradle
-          echo "    devDisabledInDebug: false" >> build.gradle
-          echo "]" >> build.gradle
+          # Find the react block in build.gradle and ensure bundleInDebug is set
+          if grep -q "react {" build.gradle; then
+            # React block exists, add bundleInDebug if not present
+            if ! grep -q "bundleInDebug" build.gradle; then
+              sed -i '/react {/a\    bundleInDebug = true' build.gradle
+            fi
+          else
+            # No react block, add one
+            echo "" >> build.gradle
+            echo "project.ext.react = [" >> build.gradle
+            echo "    bundleInDebug: true" >> build.gradle
+            echo "]" >> build.gradle
+          fi
+          
+          echo "=== app/build.gradle configuration ==="
+          grep -A 5 "react" build.gradle || echo "React config added at end of file"
 
-      - name: 🔨 Build APK with Bundled JS
+      - name: 🔨 Build APK
         working-directory: android
         run: ./gradlew assembleDebug --stacktrace
 
