@@ -30,12 +30,12 @@ jobs:
       - name: ⚙️ Expo Prebuild
         run: npx expo prebuild --platform android
 
-      - name: 🔧 Deep Fix Kotlin Version
+      # --- LE CORRECTIF CRITIQUE ---
+      # On force le remplacement de la version de Kotlin directement dans le code source du build
+      - name: 🔧 Force Kotlin 1.9.25
         working-directory: android
         run: |
-          # Remplace la version dans tous les fichiers gradle du dossier android
-          find . -type f -name "*.gradle*" -exec sed -i 's/1.9.24/1.9.25/g' {} +
-          # Force les propriétés globales
+          sed -i 's/kotlinVersion = .*/kotlinVersion = "1.9.25"/' build.gradle
           echo "android.kotlinVersion=1.9.25" >> gradle.properties
           echo "kotlinVersion=1.9.25" >> gradle.properties
 
@@ -43,7 +43,7 @@ jobs:
         working-directory: android
         run: |
           chmod +x gradlew
-          # On passe la version en paramètre direct pour écraser toute autre valeur
+          # On passe également la version en paramètre de commande pour une priorité maximale
           ./gradlew assembleDebug -Pandroid.kotlinVersion=1.9.25 -PkotlinVersion=1.9.25
 
       - name: 📤 Upload APK
