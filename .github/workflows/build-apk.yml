@@ -25,39 +25,39 @@ jobs:
           java-version: '17'
 
       - name: 📦 Install Dependencies
-        # Installation propre des dépendances
         run: npm install --legacy-peer-deps
 
       - name: ⚙️ Expo Prebuild
-        # On génère le projet Android natif
         run: npx expo prebuild --platform android --clean
 
-      # --- CORRECTIF VÉRIFIÉ (MÉTHODE ADDITIVE) ---
-      # Au lieu de remplacer du texte, on ajoute la configuration à la fin du fichier.
-      # Gradle fusionnera ce bloc avec la configuration existante.
-      # C'est compatible à 100% avec React Native 0.76.
-      - name: 🔧 Force Offline Bundle (Appenging)
+      # --- ÉTAPE 1 : FIX KOTLIN ---
+      - name: 🔧 Fix Kotlin Version
         working-directory: android
         run: |
-          echo "" >> app/build.gradle
-          echo "// FORCE BUNDLE IN DEBUG" >> app/build.gradle
-          echo "react {" >> app/build.gradle
-          echo "    bundleInDebug = true" >> app/build.gradle
-          echo "}" >> app/build.gradle
-          
-          # On assure aussi la version Kotlin via gradle.properties par sécurité
+          # On remplace la version dans le fichier principal
+          sed -i 's/kotlinVersion = .*/kotlinVersion = "1.9.25"/' build.gradle
+          # On assure la sécurité via gradle.properties
           echo "android.kotlinVersion=1.9.25" >> gradle.properties
           echo "kotlinVersion=1.9.25" >> gradle.properties
 
-      - name: 🔨 Build APK
+      # --- ÉTAPE 2 : CONFIGURER RELEASE AVEC CLÉ DEBUG ---
+      # C'est l'astuce magique pour avoir un APK offline sans gérer de clés
+      - name: 🔓 Unlock Release Build
+        working-directory: android
+        run: |
+          echo "" >> app/build.gradle
+          echo "android.buildTypes.release.signingConfig = android.signingConfigs.debug" >> app/build.gradle
+
+      # --- ÉTAPE 3 : BUILD RELEASE ---
+      # On lance l'assemblage Release (toujours offline)
+      - name: 🔨 Build Release APK
         working-directory: android
         run: |
           chmod +x gradlew
-          # On garde les arguments de sécurité
-          ./gradlew assembleDebug --no-daemon -PkotlinVersion=1.9.25
+          ./gradlew assembleRelease --no-daemon -PkotlinVersion=1.9.25
 
       - name: 📤 Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: arbitrage-app-offline
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: arbitrage-app-release
+          path: android/app/build/outputs/apk/release/app-release.apk
