@@ -16,8 +16,8 @@ jobs:
       - name: 🏗 Setup Node
         uses: actions/setup-node@v3
         with:
-          node-version: 20 # On passe à Node 20 (plus rapide)
-          cache: 'npm'
+          node-version: 20
+          # cache: 'npm'  <-- LIGNE SUPPRIMÉE POUR CORRIGER L'ERREUR
 
       - name: 🏗 Setup Java
         uses: actions/setup-java@v3
@@ -26,8 +26,8 @@ jobs:
           java-version: '17'
 
       - name: 📦 Install Dependencies
-        # On force la régénération du lockfile pour éviter les conflits
-        run: rm -f package-lock.json && npm install
+        # On installe et on génère un nouveau lockfile silencieusement
+        run: npm install
 
       - name: ⚙️ Expo Prebuild
         run: npx expo prebuild --platform android
