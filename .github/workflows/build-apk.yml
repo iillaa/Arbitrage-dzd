@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Standalone Android APK
 
 on:
   push:
@@ -26,67 +26,45 @@ jobs:
           java-version: '17'
 
       - name: 📦 Install Dependencies
-        run: |
-          npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+        run: npm install --legacy-peer-deps
 
       - name: ⚙️ Expo Prebuild
-        run: |
-          npx expo prebuild --platform android --clean
+        run: npx expo prebuild --platform android --clean
 
       - name: 🔧 Configure Gradle
         working-directory: android
         run: |
-          # Ensure gradle wrapper exists
-          if [ ! -f "gradlew" ]; then
-            echo "Gradle wrapper not found!"
-            exit 1
-          fi
-          
-          # Make gradlew executable
           chmod +x gradlew
-          
-          # Set Gradle version to 8.0 (more compatible)
           sed -i 's/distributionUrl=.*zip/distributionUrl=https\:\/\/services.gradle.org\/distributions\/gradle-8.0-all.zip/' gradle/wrapper/gradle-wrapper.properties
           
-          # Ensure gradle.properties has necessary settings
-          if [ ! -f "gradle.properties" ]; then
-            touch gradle.properties
-          fi
-          
-          # Add essential properties
-          grep -q "android.useAndroidX" gradle.properties || echo "android.useAndroidX=true" >> gradle.properties
-          grep -q "android.enableJetifier" gradle.properties || echo "android.enableJetifier=true" >> gradle.properties
-          grep -q "org.gradle.jvmargs" gradle.properties || echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError" >> gradle.properties
-          grep -q "org.gradle.daemon" gradle.properties || echo "org.gradle.daemon=false" >> gradle.properties
-          
-          # Show configuration
-          echo "=== Gradle Wrapper Properties ==="
-          cat gradle/wrapper/gradle-wrapper.properties
-          echo ""
-          echo "=== Gradle Properties ==="
-          cat gradle.properties
+          # Configure gradle.properties
+          cat >> gradle.properties << EOF
+android.useAndroidX=true
+android.enableJetifier=true
+org.gradle.jvmargs=-Xmx4096m
+org.gradle.daemon=false
+EOF
 
-      - name: 🔨 Build Debug APK
+      - name: 🔧 Enable JS Bundling in APK
+        working-directory: android/app
+        run: |
+          # This is the KEY step - enable bundleInDebug
+          cat >> build.gradle << 'EOF'
+
+project.ext.react = [
+    bundleInDebug: true,
+    bundleInRelease: true,
+    devDisabledInDebug: false
+]
+EOF
+
+      - name: 🔨 Build APK with Bundled JS
         working-directory: android
         run: |
-          ./gradlew clean assembleDebug --stacktrace --warning-mode all
-        continue-on-error: false
+          ./gradlew assembleDebug --stacktrace
 
-      - name: 📤 Upload APK Artifact
-        if: success()
+      - name: 📤 Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: arbitrage-app-debug
+          name: arbitrage-standalone
           path: android/app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 30
-
-      - name: 📤 Upload Build Logs (on failure)
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-logs
-          path: |
-            android/app/build/outputs/logs/
-            android/build/
-          retention-days: 7
-          if-no-files-found: ignore
