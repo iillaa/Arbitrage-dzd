@@ -25,58 +25,55 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: 🏗 Setup Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: 📦 Install Dependencies
         run: |
-          npm ci --legacy-peer-deps
+          npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
       - name: ⚙️ Expo Prebuild
         run: |
           npx expo prebuild --platform android --clean
 
-      - name: 🔧 Fix Gradle Configuration
+      - name: 🔧 Configure Gradle
         working-directory: android
         run: |
-          # Fix Gradle wrapper version
-          sed -i 's/distributionUrl=.*zip/distributionUrl=https\:\/\/services.gradle.org\/distributions\/gradle-8.2-all.zip/' gradle/wrapper/gradle-wrapper.properties
-          
-          # Fix build.gradle to ensure compatibility
-          if [ -f "build.gradle" ]; then
-            # Update AGP version if needed
-            sed -i 's/com.android.tools.build:gradle:[0-9.]*/com.android.tools.build:gradle:8.1.4/' build.gradle
+          # Ensure gradle wrapper exists
+          if [ ! -f "gradlew" ]; then
+            echo "Gradle wrapper not found!"
+            exit 1
           fi
+          
+          # Make gradlew executable
+          chmod +x gradlew
+          
+          # Set Gradle version to 8.0 (more compatible)
+          sed -i 's/distributionUrl=.*zip/distributionUrl=https\:\/\/services.gradle.org\/distributions\/gradle-8.0-all.zip/' gradle/wrapper/gradle-wrapper.properties
           
           # Ensure gradle.properties has necessary settings
           if [ ! -f "gradle.properties" ]; then
             touch gradle.properties
           fi
           
-          # Add essential properties if missing
+          # Add essential properties
           grep -q "android.useAndroidX" gradle.properties || echo "android.useAndroidX=true" >> gradle.properties
           grep -q "android.enableJetifier" gradle.properties || echo "android.enableJetifier=true" >> gradle.properties
-          grep -q "org.gradle.jvmargs" gradle.properties || echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=512m" >> gradle.properties
-
-      - name: 📝 Display Build Configuration
-        working-directory: android
-        run: |
+          grep -q "org.gradle.jvmargs" gradle.properties || echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError" >> gradle.properties
+          grep -q "org.gradle.daemon" gradle.properties || echo "org.gradle.daemon=false" >> gradle.properties
+          
+          # Show configuration
           echo "=== Gradle Wrapper Properties ==="
           cat gradle/wrapper/gradle-wrapper.properties
           echo ""
           echo "=== Gradle Properties ==="
           cat gradle.properties
-          echo ""
-          echo "=== Root build.gradle ==="
-          head -20 build.gradle
 
       - name: 🔨 Build Debug APK
         working-directory: android
         run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace --info
+          ./gradlew clean assembleDebug --stacktrace --warning-mode all
+        continue-on-error: false
 
       - name: 📤 Upload APK Artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: arbitrage-app-debug
@@ -92,3 +89,4 @@ jobs:
             android/app/build/outputs/logs/
             android/build/
           retention-days: 7
+          if-no-files-found: ignore
