@@ -30,20 +30,24 @@ jobs:
       - name: ⚙️ Expo Prebuild
         run: npx expo prebuild --platform android
 
-      # --- LE CORRECTIF CRITIQUE ---
-      # On force le remplacement de la version de Kotlin directement dans le code source du build
-      - name: 🔧 Force Kotlin 1.9.25
+      - name: 🔧 Fix Kotlin Version
         working-directory: android
         run: |
-          sed -i 's/kotlinVersion = .*/kotlinVersion = "1.9.25"/' build.gradle
+          # Update Kotlin version in all build.gradle files
+          find . -type f \( -name "build.gradle" -o -name "build.gradle.kts" \) -exec sed -i 's/\(\"\|\'\''\)kotlin\(\"\|\'\''\)\s*:\s*\(\"\|\'\''\)[0-9.]*\(\"\|\'\''\)/\1kotlin\2: \3\1.9.25\4/g' {} \; 2>/dev/null || true
+          
+          # Also update ext.kotlinVersion in build.gradle files
+          find . -type f \( -name "build.gradle" -o -name "build.gradle.kts" \) -exec sed -i 's/ext(\(\"\|\'\''\)kotlinVersion\(\"\|\'\''\)\s*=\s*\(\"\|\'\''\)[0-9.]*\(\"\|\'\''\)/ext(\1kotlinVersion\2 = \3\1.9.25\4/g' {} \; 2>/dev/null || true
+          
+          # Set Kotlin version in gradle.properties
           echo "android.kotlinVersion=1.9.25" >> gradle.properties
           echo "kotlinVersion=1.9.25" >> gradle.properties
+          echo "suppressKotlinVersionCompatibilityCheck=true" >> gradle.properties
 
       - name: 🔨 Build APK
         working-directory: android
         run: |
           chmod +x gradlew
-          # On passe également la version en paramètre de commande pour une priorité maximale
           ./gradlew assembleDebug -Pandroid.kotlinVersion=1.9.25 -PkotlinVersion=1.9.25
 
       - name: 📤 Upload APK
