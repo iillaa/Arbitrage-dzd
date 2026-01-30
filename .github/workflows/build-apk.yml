@@ -25,12 +25,22 @@ jobs:
           java-version: '17'
 
       - name: 📦 Install Dependencies
-        # Le flag --legacy-peer-deps assure que le nouveau plugin s'installe sans conflit
         run: npm install --legacy-peer-deps
 
       - name: ⚙️ Expo Prebuild
-        # Le flag --clean force la regénération totale avec la bonne version de Kotlin
         run: npx expo prebuild --platform android --clean
+
+      # --- LE FIX OFFLINE EST ICI ---
+      # On injecte "bundleInDebug: true" dans le fichier de configuration de l'app
+      # Cela oblige Gradle à mettre le code JS DANS l'APK, pas sur un serveur.
+      - name: 🔧 Force Offline Bundle (Debug Mode)
+        working-directory: android
+        run: |
+          # On cherche la configuration react et on ajoute l'option bundleInDebug
+          sed -i '/project.ext.react = \[/a \ \ \ \ bundleInDebug: true,' app/build.gradle
+          
+          # Vérification (pour être sûr que ça a marché)
+          grep -A 5 "project.ext.react" app/build.gradle
 
       - name: 🔨 Build APK
         working-directory: android
@@ -41,5 +51,5 @@ jobs:
       - name: 📤 Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: arbitrage-app-debug
+          name: arbitrage-app-offline
           path: android/app/build/outputs/apk/debug/app-debug.apk
