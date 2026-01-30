@@ -1,0 +1,12 @@
+node_modules
+# Dépendances
+node_modules/
+.expo/
+dist/
+
+# Android natif généré
+android/
+*.apk
+
+# Environnement
+.env
