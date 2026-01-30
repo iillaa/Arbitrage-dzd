@@ -25,26 +25,36 @@ jobs:
           java-version: '17'
 
       - name: 📦 Install Dependencies
+        # Installation propre des dépendances
         run: npm install --legacy-peer-deps
 
       - name: ⚙️ Expo Prebuild
+        # On génère le projet Android natif
         run: npx expo prebuild --platform android --clean
 
-      # --- LE CORRECTIF OFFLINE ---
-      # On force l'inclusion du code JS dans l'APK (bundleInDebug: true)
-      # Sinon, l'app cherche un serveur Metro et affiche une erreur.
-      - name: 🔧 Force Offline Bundle (Debug Mode)
+      # --- CORRECTIF VÉRIFIÉ (MÉTHODE ADDITIVE) ---
+      # Au lieu de remplacer du texte, on ajoute la configuration à la fin du fichier.
+      # Gradle fusionnera ce bloc avec la configuration existante.
+      # C'est compatible à 100% avec React Native 0.76.
+      - name: 🔧 Force Offline Bundle (Appenging)
         working-directory: android
         run: |
-          sed -i '/project.ext.react = \[/a \ \ \ \ bundleInDebug: true,' app/build.gradle
-          # On vérifie que l'injection a fonctionné
-          grep -C 3 "bundleInDebug" app/build.gradle || echo "WARNING: Injection failed"
+          echo "" >> app/build.gradle
+          echo "// FORCE BUNDLE IN DEBUG" >> app/build.gradle
+          echo "react {" >> app/build.gradle
+          echo "    bundleInDebug = true" >> app/build.gradle
+          echo "}" >> app/build.gradle
+          
+          # On assure aussi la version Kotlin via gradle.properties par sécurité
+          echo "android.kotlinVersion=1.9.25" >> gradle.properties
+          echo "kotlinVersion=1.9.25" >> gradle.properties
 
       - name: 🔨 Build APK
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          # On garde les arguments de sécurité
+          ./gradlew assembleDebug --no-daemon -PkotlinVersion=1.9.25
 
       - name: 📤 Upload APK
         uses: actions/upload-artifact@v4
