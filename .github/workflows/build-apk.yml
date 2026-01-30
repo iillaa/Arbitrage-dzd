@@ -28,9 +28,16 @@ jobs:
       - name: 📦 Install Dependencies
         run: npm install
 
-      # CORRECTION ICI : Suppression de --no-interactive
       - name: ⚙️ Expo Prebuild
         run: npx expo prebuild --platform android
+
+      # --- LE FIX EST ICI ---
+      # On force Gradle 8.2 car la version 8.10 fait planter React Native 0.72
+      - name: 🔧 Fix Gradle Version
+        working-directory: android
+        run: |
+          sed -i 's/gradle-.*-all.zip/gradle-8.2-all.zip/' gradle/wrapper/gradle-wrapper.properties
+      # ----------------------
 
       - name: 🔨 Build APK
         working-directory: android
